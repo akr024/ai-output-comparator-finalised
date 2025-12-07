@@ -18,6 +18,13 @@ function App() {
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [history, setHistory] = useState([]);
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [darkMode, setDarkMode] = useState(() => {
+    const saved = localStorage.getItem('darkMode');
+    return saved ? JSON.parse(saved) : false;
+  });
+  const [systemPrompt, setSystemPrompt] = useState('');
+  const [rubricEvaluation, setRubricEvaluation] = useState(null);
+  const [showRubric, setShowRubric] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -30,14 +37,14 @@ function App() {
       let endpoint;
       switch (compareMode) {
         case 'groq':
-          endpoint = 'http://localhost:3001/api/groq';
+          endpoint = 'http://localhost:3001/api/ai/groq';
           break;
         case 'gemini':
-          endpoint = 'http://localhost:3001/api/gemini';
+          endpoint = 'http://localhost:3001/api/ai/gemini';
           break;
         case 'both':
         default:
-          endpoint = 'http://localhost:3001/api/compare';
+          endpoint = 'http://localhost:3001/api/ai/compare';
           break;
       }
 
@@ -50,7 +57,9 @@ function App() {
       const response = await fetch(endpoint, {
         method: 'POST',
         headers,
-        body: JSON.stringify({ prompt })
+        body: JSON.stringify({ 
+          prompt: systemPrompt ? `${systemPrompt}\n\n${prompt}` : prompt 
+        })
       });
 
       if (!response.ok) throw new Error('Failed to get responses');
@@ -77,7 +86,7 @@ function App() {
       const token = localStorage.getItem('token');
       if (!token) return;
 
-      const response = await fetch('http://localhost:3001/api/history', {
+      const response = await fetch('http://localhost:3001/api/users/queries', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -101,6 +110,55 @@ function App() {
   const handleClear = () => {
     setPrompt('');
     setResponses({});
+    setRubricEvaluation(null);
+    setShowRubric(false);
+  };
+
+  const handleCompareWithRubric = async (e) => {
+    e.preventDefault();
+    if (!prompt.trim()) return alert('Please enter a question');
+
+    setLoading(true);
+    setResponses({});
+    setRubricEvaluation(null);
+    setShowRubric(false);
+
+    try {
+      const token = localStorage.getItem('token');
+      const headers = { 'Content-Type': 'application/json' };
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      const response = await fetch('http://localhost:3001/api/ai/compare-with-rubric', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ 
+          prompt: systemPrompt ? `${systemPrompt}\n\n${prompt}` : prompt 
+        })
+      });
+
+      if (!response.ok) throw new Error('Failed to get responses');
+      
+      const data = await response.json();
+
+      // Set responses
+      setResponses({
+        groq: data.responses.groq,
+        gemini: data.responses.gemini
+      });
+
+      // Set rubric evaluation
+      if (data.evaluation && data.evaluation.success) {
+        setRubricEvaluation(data.evaluation);
+        setShowRubric(true);
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      alert('Failed to get AI responses with rubric. Make sure the server is running.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Check for existing auth token on mount
@@ -111,6 +169,16 @@ function App() {
       setUser(JSON.parse(storedUser));
     }
   }, []);
+
+  // Dark mode effect
+  useEffect(() => {
+    localStorage.setItem('darkMode', JSON.stringify(darkMode));
+    document.body.classList.toggle('dark-mode', darkMode);
+  }, [darkMode]);
+
+  const toggleDarkMode = () => {
+    setDarkMode(!darkMode);
+  };
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -139,6 +207,9 @@ function App() {
             </div>
           </div>
           <div className="header-auth">
+            <button onClick={toggleDarkMode} className="auth-btn theme-btn" title="Toggle theme">
+              {darkMode ? '☀️' : '🌙'}
+            </button>
             {user ? (
               <div className="user-menu">
                 <span className="user-name">👤 {user.username}</span>
@@ -165,6 +236,22 @@ function App() {
 
       <div className="container">
         <form onSubmit={handleSubmit} className="input-section">
+          {/* System Prompt */}
+          <div className="system-prompt-section">
+            <label className="system-prompt-label">
+              🤖 System Prompt (Optional)
+              <span className="system-prompt-hint">Set custom instructions for the AI</span>
+            </label>
+            <textarea
+              value={systemPrompt}
+              onChange={(e) => setSystemPrompt(e.target.value)}
+              placeholder="e.g., 'You are a helpful coding assistant' or 'Explain like I'm 5'"
+              rows="2"
+              disabled={loading}
+              className="system-prompt-input"
+            />
+          </div>
+
           <textarea
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
@@ -209,6 +296,15 @@ function App() {
             <button type="submit" disabled={loading} className="submit-btn">
               {loading ? '🔄 Loading...' : '✨ Get AI Response'}
             </button>
+            <button 
+              type="button" 
+              onClick={handleCompareWithRubric} 
+              disabled={loading || compareMode !== 'both'} 
+              className="rubric-btn"
+              title={compareMode !== 'both' ? 'Rubric comparison only works in "Both" mode' : 'Compare with AI-powered evaluation'}
+            >
+              {loading ? '🔄 Loading...' : '📊 Compare with Rubric'}
+            </button>
             <button type="button" onClick={handleClear} disabled={loading} className="clear-btn">
               🗑️ Clear
             </button>
@@ -227,6 +323,11 @@ function App() {
               />
             ))}
         </div>
+
+        {/* Rubric Evaluation Section */}
+        {showRubric && rubricEvaluation && (
+          <RubricEvaluation evaluation={rubricEvaluation} />
+        )}
       </div>
 
       <footer className="footer">
@@ -468,7 +569,7 @@ const ProfileModal = ({ onClose }) => {
   const fetchProfile = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:3001/api/profile', {
+      const response = await fetch('http://localhost:3001/api/users/profile', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -494,7 +595,7 @@ const ProfileModal = ({ onClose }) => {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:3001/api/profile/update', {
+      const response = await fetch('http://localhost:3001/api/users/profile', {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -633,6 +734,139 @@ const ProfileModal = ({ onClose }) => {
             </button>
           </form>
         )}
+      </div>
+    </div>
+  );
+};
+
+// Rubric Evaluation Component
+const RubricEvaluation = ({ evaluation }) => {
+  if (!evaluation || !evaluation.rubric) return null;
+
+  const { rubric, evaluator } = evaluation;
+  const { response_a, response_b, overall_comparison, recommendation } = rubric;
+
+  return (
+    <div className="rubric-section">
+      <div className="rubric-header">
+        <h2>📊 AI Evaluation Results</h2>
+        <span className="evaluator-badge">Evaluated by: {evaluator}</span>
+      </div>
+
+      <div className="rubric-content">
+        <div className="rubric-scores">
+          {/* Response A (Groq) */}
+          <div className="rubric-card groq-rubric">
+            <h3>⚡ Groq (Llama 3.3)</h3>
+            <div className="total-score">
+              Total Score: <span className="score-value">{response_a.total}/50</span>
+            </div>
+            
+            <div className="criteria-scores">
+              <div className="criteria-item">
+                <span className="criteria-name">Accuracy</span>
+                <span className="criteria-score">{response_a.accuracy}/10</span>
+              </div>
+              <div className="criteria-item">
+                <span className="criteria-name">Relevance</span>
+                <span className="criteria-score">{response_a.relevance}/10</span>
+              </div>
+              <div className="criteria-item">
+                <span className="criteria-name">Clarity</span>
+                <span className="criteria-score">{response_a.clarity}/10</span>
+              </div>
+              <div className="criteria-item">
+                <span className="criteria-name">Completeness</span>
+                <span className="criteria-score">{response_a.completeness}/10</span>
+              </div>
+              <div className="criteria-item">
+                <span className="criteria-name">Usefulness</span>
+                <span className="criteria-score">{response_a.usefulness}/10</span>
+              </div>
+            </div>
+
+            <div className="strengths-weaknesses">
+              <div className="strengths">
+                <h4>✅ Strengths</h4>
+                <ul>
+                  {response_a.strengths.map((strength, idx) => (
+                    <li key={idx}>{strength}</li>
+                  ))}
+                </ul>
+              </div>
+              <div className="weaknesses">
+                <h4>⚠️ Weaknesses</h4>
+                <ul>
+                  {response_a.weaknesses.map((weakness, idx) => (
+                    <li key={idx}>{weakness}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          {/* Response B (Gemini) */}
+          <div className="rubric-card gemini-rubric">
+            <h3>✨ Gemini</h3>
+            <div className="total-score">
+              Total Score: <span className="score-value">{response_b.total}/50</span>
+            </div>
+            
+            <div className="criteria-scores">
+              <div className="criteria-item">
+                <span className="criteria-name">Accuracy</span>
+                <span className="criteria-score">{response_b.accuracy}/10</span>
+              </div>
+              <div className="criteria-item">
+                <span className="criteria-name">Relevance</span>
+                <span className="criteria-score">{response_b.relevance}/10</span>
+              </div>
+              <div className="criteria-item">
+                <span className="criteria-name">Clarity</span>
+                <span className="criteria-score">{response_b.clarity}/10</span>
+              </div>
+              <div className="criteria-item">
+                <span className="criteria-name">Completeness</span>
+                <span className="criteria-score">{response_b.completeness}/10</span>
+              </div>
+              <div className="criteria-item">
+                <span className="criteria-name">Usefulness</span>
+                <span className="criteria-score">{response_b.usefulness}/10</span>
+              </div>
+            </div>
+
+            <div className="strengths-weaknesses">
+              <div className="strengths">
+                <h4>✅ Strengths</h4>
+                <ul>
+                  {response_b.strengths.map((strength, idx) => (
+                    <li key={idx}>{strength}</li>
+                  ))}
+                </ul>
+              </div>
+              <div className="weaknesses">
+                <h4>⚠️ Weaknesses</h4>
+                <ul>
+                  {response_b.weaknesses.map((weakness, idx) => (
+                    <li key={idx}>{weakness}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Overall Comparison */}
+        <div className="rubric-summary">
+          <div className="summary-section">
+            <h3>🔍 Overall Comparison</h3>
+            <p>{overall_comparison}</p>
+          </div>
+          <div className="summary-section recommendation">
+            <h3>💡 Recommendation</h3>
+            <p>{recommendation}</p>
+          </div>
+        </div>
       </div>
     </div>
   );

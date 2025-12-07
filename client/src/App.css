@@ -8,6 +8,123 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   min-height: 100vh;
+  transition: background 0.3s ease;
+}
+
+/* Dark Mode */
+body.dark-mode {
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+}
+
+body.dark-mode .input-section,
+body.dark-mode .response-card,
+body.dark-mode .modal-content {
+  background: #2d2d44;
+  color: #e0e0e0;
+}
+
+body.dark-mode .prompt-input,
+body.dark-mode .system-prompt-input,
+body.dark-mode .mode-btn,
+body.dark-mode .form-group input,
+body.dark-mode .form-group textarea {
+  background: #1a1a2e;
+  color: #e0e0e0;
+  border-color: #3d3d5c;
+}
+
+body.dark-mode .prompt-input:focus,
+body.dark-mode .system-prompt-input:focus,
+body.dark-mode .mode-btn:hover:not(:disabled),
+body.dark-mode .form-group input:focus,
+body.dark-mode .form-group textarea:focus {
+  border-color: #667eea;
+}
+
+body.dark-mode .mode-btn.active {
+  background: #667eea;
+  color: white;
+}
+
+body.dark-mode .mode-btn {
+  color: #b0b0b0;
+}
+
+body.dark-mode .clear-btn {
+  background: #3d3d5c;
+  color: #e0e0e0;
+}
+
+body.dark-mode .clear-btn:hover:not(:disabled) {
+  background: #4d4d6c;
+}
+
+body.dark-mode .card-body {
+  color: #e0e0e0;
+}
+
+body.dark-mode .response-content p {
+  color: #e0e0e0;
+}
+
+body.dark-mode .empty-state {
+  color: #b0b0b0;
+}
+
+body.dark-mode .loading-spinner {
+  color: #b0b0b0;
+}
+
+body.dark-mode .timestamp {
+  border-top-color: #3d3d5c;
+  color: #888;
+}
+
+body.dark-mode .modal-content h2,
+body.dark-mode .mode-label,
+body.dark-mode .system-prompt-label,
+body.dark-mode .form-group label {
+  color: #e0e0e0;
+}
+
+body.dark-mode .profile-section {
+  background: #1a1a2e;
+  border-color: #3d3d5c;
+}
+
+body.dark-mode .profile-section h3 {
+  color: #8b9cff;
+}
+
+body.dark-mode .disabled-input {
+  background: #16213e !important;
+  color: #888 !important;
+}
+
+body.dark-mode .history-item {
+  background: #1a1a2e;
+  border-color: #3d3d5c;
+}
+
+body.dark-mode .history-item:hover {
+  background: #2d2d44;
+  border-color: #667eea;
+}
+
+body.dark-mode .history-prompt {
+  background: #16213e;
+  color: #e0e0e0;
+}
+
+body.dark-mode .history-subtitle,
+body.dark-mode .history-timestamp,
+body.dark-mode .empty-history,
+body.dark-mode .auth-switch {
+  color: #b0b0b0;
+}
+
+body.dark-mode .system-prompt-hint {
+  color: #888;
 }
 
 .app {
@@ -155,6 +272,19 @@ body {
   background: rgba(255, 255, 255, 0.3);
 }
 
+.theme-btn {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  border: 2px solid rgba(255, 255, 255, 0.5);
+  font-size: 1.2rem;
+  min-width: 50px;
+}
+
+.theme-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: scale(1.1);
+}
+
 /* Container */
 .container {
   flex: 1;
@@ -186,6 +316,52 @@ body {
 .prompt-input:focus {
   outline: none;
   border-color: #667eea;
+}
+
+/* System Prompt Section */
+.system-prompt-section {
+  margin-bottom: 1.5rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 2px dashed #e0e0e0;
+}
+
+.system-prompt-label {
+  display: block;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 0.75rem;
+  font-size: 0.95rem;
+}
+
+.system-prompt-hint {
+  display: block;
+  font-weight: normal;
+  color: #666;
+  font-size: 0.85rem;
+  margin-top: 0.25rem;
+}
+
+.system-prompt-input {
+  width: 100%;
+  padding: 0.75rem;
+  font-size: 0.95rem;
+  border: 2px solid #e0e0e0;
+  border-radius: 8px;
+  resize: vertical;
+  font-family: inherit;
+  background: #f9f9f9;
+  transition: all 0.2s ease;
+}
+
+.system-prompt-input:focus {
+  outline: none;
+  border-color: #667eea;
+  background: white;
+}
+
+.system-prompt-input::placeholder {
+  color: #999;
+  font-style: italic;
 }
 
 /* Mode Selector */
@@ -274,6 +450,21 @@ button {
 
 .clear-btn:hover:not(:disabled) {
   background: #e0e0e0;
+}
+
+.rubric-btn {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.rubric-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #5568d3 0%, #653a91 100%);
+  transform: translateY(-2px);
+}
+
+.rubric-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* Response Cards */
@@ -745,6 +936,261 @@ button {
   color: #999;
 }
 
+/* Rubric Evaluation Section */
+.rubric-section {
+  background: white;
+  border-radius: 12px;
+  padding: 2rem;
+  margin-top: 2rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+}
+
+.rubric-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 3px solid #667eea;
+}
+
+.rubric-header h2 {
+  font-size: 1.8rem;
+  color: #333;
+  margin: 0;
+}
+
+.evaluator-badge {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.rubric-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.rubric-scores {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+}
+
+.rubric-card {
+  background: #f9f9f9;
+  border-radius: 12px;
+  padding: 1.5rem;
+  border: 3px solid transparent;
+  transition: all 0.3s ease;
+}
+
+.rubric-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+}
+
+.groq-rubric {
+  border-color: #f55036;
+}
+
+.gemini-rubric {
+  border-color: #4285f4;
+}
+
+.rubric-card h3 {
+  font-size: 1.4rem;
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid #e0e0e0;
+}
+
+.total-score {
+  font-size: 1.3rem;
+  font-weight: 600;
+  text-align: center;
+  margin-bottom: 1.5rem;
+  padding: 1rem;
+  background: white;
+  border-radius: 8px;
+  color: #333;
+}
+
+.score-value {
+  color: #667eea;
+  font-size: 1.6rem;
+  font-weight: 700;
+}
+
+.criteria-scores {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.criteria-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem;
+  background: white;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.criteria-item:hover {
+  background: #f0f0ff;
+  transform: translateX(5px);
+}
+
+.criteria-name {
+  font-weight: 600;
+  color: #555;
+}
+
+.criteria-score {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 0.3rem 0.8rem;
+  border-radius: 15px;
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
+.strengths-weaknesses {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.strengths,
+.weaknesses {
+  background: white;
+  padding: 1rem;
+  border-radius: 8px;
+}
+
+.strengths h4,
+.weaknesses h4 {
+  margin-bottom: 0.75rem;
+  font-size: 1.1rem;
+}
+
+.strengths h4 {
+  color: #2e7d32;
+}
+
+.weaknesses h4 {
+  color: #d32f2f;
+}
+
+.strengths ul,
+.weaknesses ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.strengths li {
+  padding: 0.5rem;
+  padding-left: 1.5rem;
+  position: relative;
+  color: #555;
+  line-height: 1.5;
+}
+
+.strengths li:before {
+  content: "✓";
+  position: absolute;
+  left: 0;
+  color: #2e7d32;
+  font-weight: bold;
+  font-size: 1.2rem;
+}
+
+.weaknesses li {
+  padding: 0.5rem;
+  padding-left: 1.5rem;
+  position: relative;
+  color: #555;
+  line-height: 1.5;
+}
+
+.weaknesses li:before {
+  content: "•";
+  position: absolute;
+  left: 0;
+  color: #d32f2f;
+  font-weight: bold;
+  font-size: 1.2rem;
+}
+
+.rubric-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.summary-section {
+  background: #f9f9f9;
+  padding: 1.5rem;
+  border-radius: 12px;
+  border-left: 4px solid #667eea;
+}
+
+.summary-section.recommendation {
+  border-left-color: #764ba2;
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
+}
+
+.summary-section h3 {
+  font-size: 1.3rem;
+  margin-bottom: 1rem;
+  color: #333;
+}
+
+.summary-section p {
+  line-height: 1.8;
+  color: #555;
+  font-size: 1.05rem;
+}
+
+/* Dark mode for rubric */
+body.dark-mode .rubric-section {
+  background: #2d2d44;
+}
+
+body.dark-mode .rubric-header h2,
+body.dark-mode .rubric-card h3,
+body.dark-mode .summary-section h3 {
+  color: #e0e0e0;
+}
+
+body.dark-mode .rubric-card,
+body.dark-mode .summary-section {
+  background: #1a1a2e;
+}
+
+body.dark-mode .total-score,
+body.dark-mode .criteria-item,
+body.dark-mode .strengths,
+body.dark-mode .weaknesses {
+  background: #16213e;
+  color: #e0e0e0;
+}
+
+body.dark-mode .criteria-name,
+body.dark-mode .strengths li,
+body.dark-mode .weaknesses li,
+body.dark-mode .summary-section p {
+  color: #b0b0b0;
+}
+
 /* Mobile */
 @media (max-width: 768px) {
   .header h1 {
@@ -818,5 +1264,27 @@ button {
 
   .profile-section {
     padding: 1rem;
+  }
+
+  .rubric-section {
+    padding: 1.5rem;
+  }
+
+  .rubric-header {
+    flex-direction: column;
+    gap: 1rem;
+    align-items: flex-start;
+  }
+
+  .rubric-scores {
+    grid-template-columns: 1fr;
+  }
+
+  .button-group {
+    flex-wrap: wrap;
+  }
+
+  .button-group button {
+    min-width: 100%;
   }
 }

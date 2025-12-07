@@ -203,6 +203,157 @@ def compare_view(request):
         }, status=500)
 
 
+def get_ai_comparison_rubric(prompt, groq_response, gemini_response):
+    comparison_prompt = f"""You are an expert AI evaluator. Compare these two AI responses to the same prompt and provide a detailed evaluation.
+
+Original Prompt: {prompt}
+
+Response A (Groq/Llama 3.3): {groq_response}
+
+Response B (Gemini): {gemini_response}
+
+Please evaluate both responses using the following rubric (score each criterion from 1-10):
+
+1. **Accuracy**: How factually correct and reliable is the information?
+2. **Relevance**: How well does it address the prompt?
+3. **Clarity**: How clear and easy to understand is the response?
+4. **Completeness**: How thorough and comprehensive is the answer?
+5. **Usefulness**: How practical and helpful is the response?
+
+Provide your evaluation in the following JSON format:
+{{
+    "response_a": {{
+        "accuracy": <score>,
+        "relevance": <score>,
+        "clarity": <score>,
+        "completeness": <score>,
+        "usefulness": <score>,
+        "total": <sum of all scores>,
+        "strengths": ["strength 1", "strength 2"],
+        "weaknesses": ["weakness 1", "weakness 2"]
+    }},
+    "response_b": {{
+        "accuracy": <score>,
+        "relevance": <score>,
+        "clarity": <score>,
+        "completeness": <score>,
+        "usefulness": <score>,
+        "total": <sum of all scores>,
+        "strengths": ["strength 1", "strength 2"],
+        "weaknesses": ["weakness 1", "weakness 2"]
+    }},
+    "overall_comparison": "Brief summary of which is better and why",
+    "recommendation": "Which response would you recommend and why?"
+}}"""
+
+    try:
+        # use Gemini for comparison and parse JSON
+        genai.configure(api_key=settings.GEMINI_API_KEY)
+        model = genai.GenerativeModel('gemini-flash-latest')
+        result = model.generate_content(comparison_prompt)
+
+        response_text = result.text
+        if "```json" in response_text:
+            response_text = response_text.split("```json")[1].split("```")[0].strip()
+        elif "```" in response_text:
+            response_text = response_text.split("```")[1].split("```")[0].strip()
+        
+        rubric = json.loads(response_text)
+        return {
+            'success': True,
+            'rubric': rubric,
+            'evaluator': 'Gemini Flash'
+        }
+    except Exception as e:
+        print(f'Rubric generation error: {str(e)}')
+        # fallback: try with Groq
+        try:
+            client = Groq(api_key=settings.GROQ_API_KEY)
+            completion = client.chat.completions.create(
+                model="llama-3.3-70b-versatile",
+                messages=[{"role": "user", "content": comparison_prompt}],
+                max_tokens=2000,
+            )
+            response_text = completion.choices[0].message.content
+            
+            if "```json" in response_text:
+                response_text = response_text.split("```json")[1].split("```")[0].strip()
+            elif "```" in response_text:
+                response_text = response_text.split("```")[1].split("```")[0].strip()
+            
+            rubric = json.loads(response_text)
+            return {
+                'success': True,
+                'rubric': rubric,
+                'evaluator': 'Groq Llama 3.3'
+            }
+        except Exception as e2:
+            print(f'Fallback rubric error: {str(e2)}')
+            return {
+                'success': False,
+                'error': 'Failed to generate comparison rubric',
+                'details': str(e2)
+            }
+
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def compare_with_rubric_view(request):
+    try:
+        data = json.loads(request.body)
+        prompt = data.get('prompt')
+        
+        if not prompt:
+            return JsonResponse({'error': 'Prompt is required'}, status=400)
+        
+        # get responses from both models
+        groq_result = get_groq_response(prompt)
+        gemini_result = get_gemini_response(prompt)
+        
+        if groq_result.get('error') or gemini_result.get('error'):
+            return JsonResponse({
+                'error': 'Failed to get responses from one or both AI models',
+                'groq': groq_result,
+                'gemini': gemini_result
+            }, status=500)
+        
+        # get AI-based comparison and rubric
+        rubric_result = get_ai_comparison_rubric(
+            prompt,
+            groq_result.get('response'),
+            gemini_result.get('response')
+        )
+        
+        # prepare response and save to history
+        response_data = {
+            'prompt': prompt,
+            'responses': {
+                'groq': groq_result,
+                'gemini': gemini_result
+            },
+            'evaluation': rubric_result
+        }
+
+        user = get_authenticated_user(request)
+        if user and rubric_result.get('success'):
+            QueryHistory.objects.create(
+                user=user,
+                prompt=prompt,
+                response_groq=groq_result.get('response'),
+                response_gemini=gemini_result.get('response'),
+                mode='compare_with_rubric'
+            )
+        
+        return JsonResponse(response_data)
+        
+    except Exception as e:
+        print(f'Compare with rubric error: {str(e)}')
+        return JsonResponse({
+            'error': 'Failed to compare AI responses with rubric',
+            'details': str(e)
+        }, status=500)
+
+
 
 # auth endpoints
 @csrf_exempt
@@ -372,9 +523,14 @@ def history_view(request):
         }, status=500)
 
 
-@require_http_methods(["GET"])
+@csrf_exempt
 def profile_view(request):
-    """Get user's profile information"""
+    """
+    RESTful endpoint for user profile
+    GET - Read profile
+    PUT - Update profile  
+    DELETE - Delete profile/account
+    """
     try:
         user = get_authenticated_user(request)
         if not user:
@@ -382,69 +538,73 @@ def profile_view(request):
                 'error': 'Authentication required'
             }, status=401)
         
-        return JsonResponse({
-            'profile': {
-                'email': user.email,
-                'username': user.username,
-                'first_name': user.first_name or '',
-                'last_name': user.last_name or '',
-                'phone': user.phone or '',
-                'location': user.location or '',
-                'bio': user.bio or '',
-            }
-        })
+        if request.method == 'GET':
+            # Read profile
+            return JsonResponse({
+                'profile': {
+                    'id': user.id,
+                    'email': user.email,
+                    'username': user.username,
+                    'first_name': user.first_name or '',
+                    'last_name': user.last_name or '',
+                    'phone': user.phone or '',
+                    'location': user.location or '',
+                    'bio': user.bio or '',
+                }
+            })
+        
+        elif request.method == 'PUT':
+            # Update profile
+            data = json.loads(request.body)
+            
+            # Update profile fields
+            if 'first_name' in data:
+                user.first_name = data['first_name']
+            if 'last_name' in data:
+                user.last_name = data['last_name']
+            if 'phone' in data:
+                user.phone = data['phone']
+            if 'location' in data:
+                user.location = data['location']
+            if 'bio' in data:
+                user.bio = data['bio']
+            if 'username' in data:
+                user.username = data['username']
+            
+            user.save()
+            
+            return JsonResponse({
+                'message': 'Profile updated successfully',
+                'profile': {
+                    'id': user.id,
+                    'email': user.email,
+                    'username': user.username,
+                    'first_name': user.first_name or '',
+                    'last_name': user.last_name or '',
+                    'phone': user.phone or '',
+                    'location': user.location or '',
+                    'bio': user.bio or '',
+                }
+            })
+        
+        elif request.method == 'DELETE':
+            # Delete account
+            user_email = user.email
+            user.delete()
+            
+            return JsonResponse({
+                'message': 'Account deleted successfully',
+                'email': user_email
+            }, status=200)
+        
+        else:
+            return JsonResponse({
+                'error': 'Method not allowed'
+            }, status=405)
         
     except Exception as e:
         print(f'Profile error: {str(e)}')
         return JsonResponse({
-            'error': 'Failed to get profile',
-            'details': str(e)
-        }, status=500)
-
-
-@csrf_exempt
-@require_http_methods(["PUT"])
-def update_profile_view(request):
-    """Update user's profile information"""
-    try:
-        user = get_authenticated_user(request)
-        if not user:
-            return JsonResponse({
-                'error': 'Authentication required'
-            }, status=401)
-        
-        data = json.loads(request.body)
-        
-        # Update profile fields
-        if 'first_name' in data:
-            user.first_name = data['first_name']
-        if 'last_name' in data:
-            user.last_name = data['last_name']
-        if 'phone' in data:
-            user.phone = data['phone']
-        if 'location' in data:
-            user.location = data['location']
-        if 'bio' in data:
-            user.bio = data['bio']
-        
-        user.save()
-        
-        return JsonResponse({
-            'message': 'Profile updated successfully',
-            'profile': {
-                'email': user.email,
-                'username': user.username,
-                'first_name': user.first_name or '',
-                'last_name': user.last_name or '',
-                'phone': user.phone or '',
-                'location': user.location or '',
-                'bio': user.bio or '',
-            }
-        })
-        
-    except Exception as e:
-        print(f'Update profile error: {str(e)}')
-        return JsonResponse({
-            'error': 'Failed to update profile',
+            'error': f'Failed to {request.method.lower()} profile',
             'details': str(e)
         }, status=500)

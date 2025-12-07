@@ -7,16 +7,21 @@ from pathlib import Path
 from datetime import timedelta
 from dotenv import load_dotenv
 
-# Load environment variables
+# Load environment variables FIRST (before importing database_config)
 load_dotenv()
+
+from .database_config import get_database_config
+
+# Use dynamic config (after load_dotenv)
+DATABASES = get_database_config()
 
 # Build paths inside the project
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# SECURITY WARNING: keep the secret key used in production secret!
+# keep the secret key used in production
 SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'django-insecure-dev-key-change-in-production')
 
-# SECURITY WARNING: don't run with debug turned on in production!
+# don't run with debug turned on in production
 DEBUG = True
 
 ALLOWED_HOSTS = ['localhost', '127.0.0.1']
@@ -77,13 +82,8 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'config.wsgi.application'
 
-# Database
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
-    }
-}
+# Database configuration is handled by database_config.py
+# Use DB_TYPE=postgresql or DB_TYPE=sqlite in .env to switch
 
 # Internationalization
 LANGUAGE_CODE = 'en-us'
