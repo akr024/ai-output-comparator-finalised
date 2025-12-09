@@ -302,7 +302,7 @@ function App() {
         )}
 
         {showProfileModal && (
-          <ProfileModal onClose={() => setShowProfileModal(false)} />
+          <ProfileModal onClose={() => setShowProfileModal(false)} onLogout={logout} />
         )}
       </div>
     </Router>

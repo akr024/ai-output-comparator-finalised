@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 const API_BASE_URL = import.meta.env.VITE_API_URL;
 
-const ProfileModal = ({ onClose }) => {
+const ProfileModal = ({ onClose, onLogout }) => {
+  const navigate = useNavigate();
   const [profile, setProfile] = useState({
     email: '',
     username: '',
@@ -14,6 +16,7 @@ const ProfileModal = ({ onClose }) => {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false); // <-- separate state for delete
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
@@ -25,13 +28,10 @@ const ProfileModal = ({ onClose }) => {
     try {
       const token = localStorage.getItem('token');
       const response = await fetch(`${API_BASE_URL}/api/users/profile`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
+        headers: { 'Authorization': `Bearer ${token}` }
       });
 
       if (!response.ok) throw new Error('Failed to fetch profile');
-
       const data = await response.json();
       setProfile(data.profile);
       setLoading(false);
@@ -49,7 +49,6 @@ const ProfileModal = ({ onClose }) => {
 
     try {
       const token = localStorage.getItem('token');
-
       const response = await fetch(`${API_BASE_URL}/api/users/profile`, {
         method: 'PUT',
         headers: {
@@ -81,6 +80,37 @@ const ProfileModal = ({ onClose }) => {
       setSaving(false);
     }
   };
+
+  const handleDelete = async () => {
+    if (!window.confirm("Are you sure you want to delete your account? This action cannot be undone.")) return;
+
+    setError('');
+    setDeleting(true);
+
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${API_BASE_URL}/api/users/profile`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to delete account');
+      }
+
+      // Log out globally
+      localStorage.removeItem('token');
+      if (onLogout) onLogout();   // <-- clears user state globally
+
+      onClose();                 // close modal
+      navigate('/');              // redirect home
+    } catch (err) {
+      setError(err.message || 'Failed to delete account.');
+      setDeleting(false);
+    }
+  };
+
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -123,7 +153,7 @@ const ProfileModal = ({ onClose }) => {
                     type="text"
                     value={profile.first_name}
                     onChange={(e) => setProfile({ ...profile, first_name: e.target.value })}
-                    disabled={saving}
+                    disabled={saving || deleting}
                   />
                 </div>
 
@@ -133,7 +163,7 @@ const ProfileModal = ({ onClose }) => {
                     type="text"
                     value={profile.last_name}
                     onChange={(e) => setProfile({ ...profile, last_name: e.target.value })}
-                    disabled={saving}
+                    disabled={saving || deleting}
                   />
                 </div>
               </div>
@@ -144,7 +174,7 @@ const ProfileModal = ({ onClose }) => {
                   type="tel"
                   value={profile.phone}
                   onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
-                  disabled={saving}
+                  disabled={saving || deleting}
                 />
               </div>
 
@@ -154,7 +184,7 @@ const ProfileModal = ({ onClose }) => {
                   type="text"
                   value={profile.location}
                   onChange={(e) => setProfile({ ...profile, location: e.target.value })}
-                  disabled={saving}
+                  disabled={saving || deleting}
                 />
               </div>
 
@@ -164,13 +194,23 @@ const ProfileModal = ({ onClose }) => {
                   value={profile.bio}
                   onChange={(e) => setProfile({ ...profile, bio: e.target.value })}
                   rows="4"
-                  disabled={saving}
+                  disabled={saving || deleting}
                 />
               </div>
             </div>
 
-            <button type="submit" className="profile-save-btn" disabled={saving}>
+            <button type="submit" className="profile-save-btn" disabled={saving || deleting}>
               {saving ? '💾 Saving...' : '💾 Save Changes'}
+            </button>
+
+            <button
+              type="button"
+              className="profile-delete-btn"
+              onClick={handleDelete}
+              disabled={saving || deleting}
+              style={{ marginTop: '10px', backgroundColor: '#e74c3c', color: '#fff' }}
+            >
+              {deleting ? '🗑️ Deleting...' : '🗑️ Delete Account'}
             </button>
           </form>
         )}
