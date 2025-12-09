@@ -33,7 +33,7 @@ export default function Login({ onSuccess }) {
       localStorage.setItem('token', data.tokens.access);
       localStorage.setItem('user', JSON.stringify(data.user));
 
-      onSuccess(data.user);
+      onSuccess(data);
       navigate('/');
     } catch {
       setError('Network error');
